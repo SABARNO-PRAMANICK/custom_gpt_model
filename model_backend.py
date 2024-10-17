@@ -1,21 +1,27 @@
 import torch
 import streamlit as st
-from transformers import GPT2Tokenizer, GPT2LMHeadModel # type: ignore
+from transformers import GPT2Tokenizer, GPT2LMHeadModel 
 
-# Load the pre-trained GPT2 model and tokenizer
-model_name = "gpt2"  # You can replace this with your custom model
+model_name = "gpt2"  
 model = GPT2LMHeadModel.from_pretrained(model_name)
 tokenizer = GPT2Tokenizer.from_pretrained(model_name)
 
-# Move model to GPU if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
-# Function to generate text
 def generate_text(prompt):
     input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
-    output = model.generate(input_ids, max_length=150, num_beams=5,
-                            no_repeat_ngram_size=2, early_stopping=True)
+    output = model.generate(
+        input_ids,
+        max_length=80,               # Shorten length for more focused responses
+        num_beams=7,                 # Use beam search with 7 beams
+        no_repeat_ngram_size=2,      # Avoid repetition
+        temperature=0.7,             # Reduce randomness
+        top_k=50,                    # Sample from top 50 tokens
+        top_p=0.9,                   # Use nucleus sampling
+        repetition_penalty=1.2,      # Penalize repeated phrases
+        early_stopping=True
+    )
     return tokenizer.decode(output[0], skip_special_tokens=True)
 
 # Title and introduction
@@ -33,9 +39,11 @@ user_input = st.text_input("You: ", key="user_input")
 
 # When the user inputs a prompt
 if user_input:
+    prompt = f"Nova is a helpful, friendly assistant. Nova says: {user_input}"
+    
     # Generate a response
     with st.spinner("Generating response..."):
-        response = generate_text(user_input)
+        response = generate_text(prompt)
 
     # Store the prompt and the response
     st.session_state.past_prompts.append(user_input)
